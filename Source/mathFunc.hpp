@@ -169,4 +169,27 @@ static inline void predictorCorrector(QVector<QVector3D>& pos, QVector<QVector3D
 	prev_forces = predicted_forces;
 }
 
+static inline float reflect(float coord, float L, float& vel)
+{
+	float size = 2.0f * L;
+	float shifted = coord + L;
+
+	int n = static_cast<int>(shifted / size);
+	float local = shifted - n * size;
+
+	if (local < 0.0f)
+	{
+		local += size;
+		n -= 1;
+	}
+
+	bool isEven = (n % 2 == 0);
+	if (!isEven)
+	{
+		local = size - local;
+		vel = -vel;
+	}
+	return local - L;
+}
+
 #endif

@@ -81,7 +81,7 @@ private:
 	void createScatter(int index);
 	void updateScatters();
 	void resetAnimation();
-	void applyBoundaryConditions(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double L);
+	void positionCorrection(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double L);
 	double calculateMSE(const QVector<QVector3D>& pos1, const QVector<QVector3D>& pos2);
 
 private slots:

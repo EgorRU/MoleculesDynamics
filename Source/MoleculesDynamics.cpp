@@ -42,18 +42,18 @@ MoleculesDynamics::MoleculesDynamics(QWidget* parent)
 		{weightSpinBox, {0.1, 1000, 1, 1, "Масса"}},
 		{epsilonSpinBox, {0.1, 1000, 1, 1, "ε"}},
 		{sigmaSpinBox, {0.1, 1000, 1, 1, "σ"}},
-		{speedSpinBox, {0.01, 3, 0.01, 0.2, "Диапазон начальных скорост"}},
+		{speedSpinBox, {0.01, 2, 0.01, 0.01, "Δ начальных скоростей"}},
 	};
 
 	labelsMSE = new QLabel * [6]
-	{
-		rungeKuttaLabel,
-		verletLabel,
-		velocityVerletLabel,
-		leapfrogLabel,
-		beemanSchofieldLabel,
-		predictorCorrectorLabel,
-	};
+		{
+			rungeKuttaLabel,
+				verletLabel,
+				velocityVerletLabel,
+				leapfrogLabel,
+				beemanSchofieldLabel,
+				predictorCorrectorLabel,
+		};
 
 	setupUI();
 }
@@ -217,7 +217,7 @@ void MoleculesDynamics::animateScatters()
 			break;
 		}
 		double L = pow(NSpinBox->value() / densitySpinBox->value(), 1.0 / 3.0);
-		applyBoundaryConditions(method_positions[i], method_velocities[i], L);
+		positionCorrection(method_positions[i], method_velocities[i], L);
 	}
 
 	currentStep++;
@@ -334,22 +334,25 @@ void MoleculesDynamics::resetAnimation()
 	animationTimer->start();
 }
 
-void MoleculesDynamics::applyBoundaryConditions(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double L)
+void MoleculesDynamics::positionCorrection(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double L)
 {
-	double boxSize = 2.0 * L;
 	for (int i = 0; i < pos.size(); ++i)
 	{
-		double x = pos[i].x();
-		double y = pos[i].y();
-		double z = pos[i].z();
+		float vx = vel[i].x();
+		float vy = vel[i].y();
+		float vz = vel[i].z();
 
-		x = -L + fmod((x + L), boxSize);
-		y = -L + fmod((y + L), boxSize);
-		z = -L + fmod((z + L), boxSize);
+		float x = reflect(pos[i].x(), L, vx);
+		float y = reflect(pos[i].y(), L, vy);
+		float z = reflect(pos[i].z(), L, vz);
 
 		pos[i].setX(x);
 		pos[i].setY(y);
 		pos[i].setZ(z);
+
+		vel[i].setX(vx);
+		vel[i].setY(vy);
+		vel[i].setZ(vz);
 	}
 }
 
