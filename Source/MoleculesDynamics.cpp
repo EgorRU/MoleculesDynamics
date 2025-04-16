@@ -11,16 +11,22 @@ QString labels[6] =
 };
 
 MoleculesDynamics::MoleculesDynamics(QWidget* parent)
-	: QMainWindow(parent), currentStep(0), animationSpeed(1.0)
+	: QMainWindow(parent), currentStep(0)
 {
 	animationTimer = new QTimer();
 	gridLayout = new QGridLayout();
 	currentTimerLabel = new QLabel();
+
 	NSpinBox = new QDoubleSpinBox();
+	epsilonSpinBox = new QDoubleSpinBox();
+	sigmaSpinBox = new QDoubleSpinBox();
+	weightSpinBox = new QDoubleSpinBox();
 	densitySpinBox = new QDoubleSpinBox();
 	stepSpinBox = new QDoubleSpinBox();
 	speedSpinBox = new QDoubleSpinBox();
+
 	MSEComboBox = new QComboBox();
+
 	rungeKuttaLabel = new QLabel();
 	verletLabel = new QLabel();
 	velocityVerletLabel = new QLabel();
@@ -28,23 +34,36 @@ MoleculesDynamics::MoleculesDynamics(QWidget* parent)
 	beemanSchofieldLabel = new QLabel();
 	predictorCorrectorLabel = new QLabel();
 
+	spinBoxConfigs =
+	{
+		{stepSpinBox, {100, 100000, 100, 10000, "Шагов моделирования"}},
+		{NSpinBox, {2, 1000, 1, 10, "Количество молекул"}},
+		{densitySpinBox, {0.1, 5, 0.1, 0.8, "Плотность (ρ)"}},
+		{weightSpinBox, {0.1, 1000, 1, 1, "Масса"}},
+		{epsilonSpinBox, {0.1, 1000, 1, 1, "ε"}},
+		{sigmaSpinBox, {0.1, 1000, 1, 1, "σ"}},
+		{speedSpinBox, {0.01, 3, 0.01, 0.2, "Диапазон начальных скорост"}},
+	};
+
+	labelsMSE = new QLabel * [6]
+	{
+		rungeKuttaLabel,
+		verletLabel,
+		velocityVerletLabel,
+		leapfrogLabel,
+		beemanSchofieldLabel,
+		predictorCorrectorLabel,
+	};
+
 	setupUI();
 }
 
 void MoleculesDynamics::setupUI()
 {
-	QMenuBar* menuBar = new QMenuBar(this);
-	setMenuBar(menuBar);
-
-	QMenu* viewMenu = menuBar->addMenu("Внешний вид");
-
-	QAction* resetCameraAction = new QAction("Сбросить камеры", this);
-	viewMenu->addAction(resetCameraAction);
-	connect(resetCameraAction, &QAction::triggered, this, &MoleculesDynamics::resetCamera);
-
 	centralWidget = new QWidget(this);
 	setCentralWidget(centralWidget);
 
+	animationTimer->setInterval(10);
 	connect(animationTimer, &QTimer::timeout, this, &MoleculesDynamics::animateScatters);
 
 	QHBoxLayout* mainLayout = new QHBoxLayout(centralWidget);
@@ -64,63 +83,29 @@ void MoleculesDynamics::setupUI()
 	currentStepLayout->addWidget(currentTimerLabel);
 	controlsLayout->addLayout(currentStepLayout);
 
-	QHBoxLayout* NLayout = new QHBoxLayout();
-	NLayout->setAlignment(Qt::AlignLeft);
-	QLabel* NLabel = new QLabel("Количество молекул");
-	NLabel->setFixedWidth(180);
-	NSpinBox->setMinimum(2);
-	NSpinBox->setMaximum(1000);
-	NSpinBox->setValue(10);
-	NSpinBox->setFixedWidth(80);
-	NLayout->addWidget(NLabel);
-	NLayout->addWidget(NSpinBox);
-	NLayout->addStretch();
-	controlsLayout->addLayout(NLayout);
-	connect(NSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MoleculesDynamics::resetAnimation);
+	for (auto it = spinBoxConfigs.begin(); it != spinBoxConfigs.end(); ++it) {
+		QDoubleSpinBox* spinBox = it.key();
+		const SpinBoxConfig& config = it.value();
 
-	QHBoxLayout* densityLayout = new QHBoxLayout();
-	densityLayout->setAlignment(Qt::AlignLeft);
-	QLabel* densityLabel = new QLabel("Плотность (ρ)");
-	densityLabel->setFixedWidth(180);
-	densitySpinBox->setMinimum(0.1);
-	densitySpinBox->setMaximum(2);
-	densitySpinBox->setSingleStep(0.1);
-	densitySpinBox->setValue(0.8);
-	densitySpinBox->setFixedWidth(80);
-	densityLayout->addWidget(densityLabel);
-	densityLayout->addWidget(densitySpinBox);
-	densityLayout->addStretch();
-	controlsLayout->addLayout(densityLayout);
-	connect(densitySpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MoleculesDynamics::resetAnimation);
+		spinBox->setMinimum(config.min);
+		spinBox->setMaximum(config.max);
+		spinBox->setSingleStep(config.step);
+		spinBox->setValue(config.value);
+		spinBox->setFixedWidth(80);
 
-	QHBoxLayout* stepLayout = new QHBoxLayout();
-	stepLayout->setAlignment(Qt::AlignLeft);
-	QLabel* stepLabel = new QLabel("Шагов моделирования");
-	stepLabel->setFixedWidth(180);
-	stepSpinBox->setMinimum(100);
-	stepSpinBox->setMaximum(100000);
-	stepSpinBox->setValue(10000);
-	stepSpinBox->setSingleStep(100);
-	stepSpinBox->setFixedWidth(80);
-	stepLayout->addWidget(stepLabel);
-	stepLayout->addWidget(stepSpinBox);
-	stepLayout->addStretch();
-	controlsLayout->addLayout(stepLayout);
-	connect(stepSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MoleculesDynamics::resetAnimation);
+		QHBoxLayout* layout = new QHBoxLayout();
+		layout->setAlignment(Qt::AlignLeft);
+		QLabel* label = new QLabel(config.label);
+		label->setFixedWidth(180);
+		layout->addWidget(label);
+		layout->addWidget(spinBox);
+		layout->addStretch();
 
-	QHBoxLayout* speedLayout = new QHBoxLayout();
-	speedLayout->setAlignment(Qt::AlignLeft);
-	QLabel* speedLabel = new QLabel("Скорость");
-	speedLabel->setFixedWidth(180);
-	speedSpinBox->setMinimum(1);
-	speedSpinBox->setMaximum(100);
-	speedSpinBox->setValue(1);
-	speedSpinBox->setFixedWidth(80);
-	speedLayout->addWidget(speedLabel);
-	speedLayout->addWidget(speedSpinBox);
-	speedLayout->addStretch();
-	controlsLayout->addLayout(speedLayout);
-	connect(speedSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MoleculesDynamics::updateTimerInterval);
+		controlsLayout->addLayout(layout);
+
+		connect(spinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+			this, &MoleculesDynamics::resetAnimation);
+	}
 
 	QHBoxLayout* MSELayout = new QHBoxLayout();
 	MSELayout->setAlignment(Qt::AlignLeft);
@@ -204,27 +189,31 @@ void MoleculesDynamics::animateScatters()
 		return;
 	}
 
+	double epsilon = epsilonSpinBox->value();
+	double sigma = sigmaSpinBox->value();
+	double weight = weightSpinBox->value();
+
 	for (int i = 0; i < 6; ++i)
 	{
 		switch (i)
 		{
 		case 0:
-			rungeKutta(method_positions[i], method_velocities[i]);
+			rungeKutta(method_positions[i], method_velocities[i], epsilon, sigma, weight);
 			break;
 		case 1:
-			verlet(method_positions[i], method_velocities[i], verlet_prev_positions);
+			verlet(method_positions[i], method_velocities[i], verlet_prev_positions, epsilon, sigma, weight);
 			break;
 		case 2:
-			velocityVerlet(method_positions[i], method_velocities[i]);
+			velocityVerlet(method_positions[i], method_velocities[i], epsilon, sigma, weight);
 			break;
 		case 3:
-			leapfrog(method_positions[i], method_velocities[i]);
+			leapfrog(method_positions[i], method_velocities[i], epsilon, sigma, weight);
 			break;
 		case 4:
-			beemanSchofield(method_positions[i], method_velocities[i], method_prev_forces[i]);
+			beemanSchofield(method_positions[i], method_velocities[i], method_prev_forces[i], epsilon, sigma, weight);
 			break;
 		case 5:
-			predictorCorrector(method_positions[i], method_velocities[i], method_prev_forces[i]);
+			predictorCorrector(method_positions[i], method_velocities[i], method_prev_forces[i], epsilon, sigma, weight);
 			break;
 		}
 		double L = pow(NSpinBox->value() / densitySpinBox->value(), 1.0 / 3.0);
@@ -268,17 +257,19 @@ void MoleculesDynamics::updateScatters()
 	}
 }
 
-void MoleculesDynamics::resetAnimation() {
+void MoleculesDynamics::resetAnimation()
+{
 	currentStep = 0;
 	accumulatedMSE.clear();
 	accumulatedMSE.resize(6);
-	for (double& mse : accumulatedMSE) 
+	for (double& mse : accumulatedMSE)
 	{
 		mse = 0.0;
 	}
 
 	int N = NSpinBox->value();
 	double L = pow(N / densitySpinBox->value(), 1.0 / 3.0);
+	double speed = speedSpinBox->value();
 
 	positions.clear();
 	velocities.clear();
@@ -295,9 +286,9 @@ void MoleculesDynamics::resetAnimation() {
 
 	for (int i = 0; i < N; ++i)
 	{
-		double vx = -0.2f + QRandomGenerator::global()->generateDouble() * 0.4f;
-		double vy = -0.2f + QRandomGenerator::global()->generateDouble() * 0.4f;
-		double vz = -0.2f + QRandomGenerator::global()->generateDouble() * 0.4f;
+		double vx = -speed + QRandomGenerator::global()->generateDouble() * speed * 2;
+		double vy = -speed + QRandomGenerator::global()->generateDouble() * speed * 2;
+		double vz = -speed + QRandomGenerator::global()->generateDouble() * speed * 2;
 		velocities[i] = QVector3D(vx, vy, vz);
 	}
 
@@ -315,6 +306,7 @@ void MoleculesDynamics::resetAnimation() {
 	method_positions.clear();
 	method_velocities.clear();
 	method_prev_forces.clear();
+
 	for (int i = 0; i < 6; ++i)
 	{
 		method_positions.push_back(positions);
@@ -325,31 +317,21 @@ void MoleculesDynamics::resetAnimation() {
 	verlet_prev_positions = method_positions[1];
 	for (int j = 0; j < N; ++j)
 	{
-		verlet_prev_positions[j] -= method_velocities[1][j] * 0.0001;
+		verlet_prev_positions[j] -= method_velocities[1][j] * dt;
 	}
+
+	double epsilon = epsilonSpinBox->value();
+	double sigma = sigmaSpinBox->value();
+	double weight = weightSpinBox->value();
 
 	for (int i = 4; i <= 5; ++i)
 	{
-		method_prev_forces[i] = computeLJForces(method_positions[i]);
+		method_prev_forces[i] = computeLJForces(method_positions[i], epsilon, sigma, weight);
 	}
 
 	updateScatters();
 	updateMSELabels();
-	updateTimerInterval(speedSpinBox->value());
 	animationTimer->start();
-}
-
-void MoleculesDynamics::resetCamera()
-{
-	for (int i = 0; i < 6; ++i)
-	{
-		if (scatters[i])
-		{
-			Q3DCamera* camera = scatters[i]->scene()->activeCamera();
-			camera->setCameraPreset(Q3DCamera::CameraPresetFront);
-			camera->setZoomLevel(120);
-		}
-	}
 }
 
 void MoleculesDynamics::applyBoundaryConditions(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double L)
@@ -389,33 +371,6 @@ void MoleculesDynamics::updateMSELabels()
 	{
 		double averageMSE = accumulatedMSE[i] / currentStep;
 		QString mseText = QString("MSE %1: %2").arg(labels[i]).arg(averageMSE, 0, 'f', 6);
-
-		switch (i)
-		{
-		case 0:
-			rungeKuttaLabel->setText(mseText);
-			break;
-		case 1:
-			verletLabel->setText(mseText);
-			break;
-		case 2:
-			velocityVerletLabel->setText(mseText);
-			break;
-		case 3:
-			leapfrogLabel->setText(mseText);
-			break;
-		case 4:
-			beemanSchofieldLabel->setText(mseText);
-			break;
-		case 5:
-			predictorCorrectorLabel->setText(mseText);
-			break;
-		}
+		labelsMSE[i]->setText(mseText);
 	}
-}
-
-void MoleculesDynamics::updateTimerInterval(double speed)
-{
-	int interval = static_cast<int>(100 / speed);
-	animationTimer->setInterval(interval);
 }
