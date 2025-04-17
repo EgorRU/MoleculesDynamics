@@ -23,12 +23,16 @@ static inline QVector<QVector3D> computeLJForces(
 			double r = rij.length();
 			double rc = 2.5 * sigma;
 			if (r < 1e-6 || r > rc)
+			{
 				continue;
+			}
+
 			double sr = sigma / r;
 			double sr6 = std::pow(sr, 6);
 			double sr12 = sr6 * sr6;
 			double F_over_m = (24.0 * epsilon / weight) * (2.0 * sr12 - sr6) / (r * r);
 			QVector3D force = F_over_m * rij;
+
 			accelerations[i] += force;
 			accelerations[j] -= force;
 		}

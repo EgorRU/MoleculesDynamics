@@ -39,12 +39,12 @@ MoleculesDynamics::MoleculesDynamics(QWidget* parent)
 	{
 		{stepSpinBox, {100, 100000, 100, 10000, "Шагов моделирования", 0, ActionSpinBox::notAction}},
 		{NSpinBox, {2, 1000, 1, 10, "Количество молекул", 0, ActionSpinBox::newGeneration}},
-		{densitySpinBox, {0.1, 5, 0.1, 0.8, "Плотность молекул (ρ)", 2, ActionSpinBox::newGeneration}},
-		{weightSpinBox, {0.1, 1000, 0.1, 1, "Масса", 2, ActionSpinBox::notGeneration}},
-		{epsilonSpinBox, {0.1, 1000, 0.05, 1, "ε", 2, ActionSpinBox::notGeneration}},
-		{sigmaSpinBox, {0.1, 1000, 0.05, 1, "σ", 2, ActionSpinBox::notGeneration}},
-		{speedSpinBox, {0.01, 2, 0.01, 0.01, "Δ начальных скоростей", 2, ActionSpinBox::newGeneration}},
-		{dtSpinBox, {0.000001, 0.01, 0.000001, 0.000001, "Шаг интегрирования (dt)", 6, ActionSpinBox::notGeneration}},
+		{densitySpinBox, {0.1, 15, 0.1, 5, "Плотность молекул (ρ)", 2, ActionSpinBox::newGeneration}},
+		{weightSpinBox, {0.1, 1000, 0.1, 0.1, "Масса", 2, ActionSpinBox::notGeneration}},
+		{epsilonSpinBox, {0.1, 100, 0.05, 1, "ε", 2, ActionSpinBox::notGeneration}},
+		{sigmaSpinBox, {0.1, 100, 0.05, 1, "σ", 2, ActionSpinBox::notGeneration}},
+		{speedSpinBox, {0.05, 10, 0.05, 2, "Δ начальных скоростей", 1, ActionSpinBox::newGeneration}},
+		{dtSpinBox, {0.000001, 0.001, 0.000001, 0.000001, "Шаг интегрирования (dt)", 6, ActionSpinBox::notGeneration}},
 	};
 
 	labelsMSE = QVector<QLabel*>
@@ -178,9 +178,12 @@ void MoleculesDynamics::setupUI()
 	controlsLayout->addWidget(restartButton);
 	connect(restartButton, &QPushButton::clicked, this, &MoleculesDynamics::onlyRestart);
 
+	QHBoxLayout* buttonLayout = new QHBoxLayout();
+	buttonLayout->setAlignment(Qt::AlignLeft);
+
 	QPushButton* pauseButton = new QPushButton("Пауза/Продолжить");
-	pauseButton->setFixedWidth(400);
-	controlsLayout->addWidget(pauseButton);
+	pauseButton->setFixedWidth(200);
+	buttonLayout->addWidget(pauseButton);
 	connect(pauseButton, &QPushButton::clicked, this, [this]()
 		{
 			if (animationTimer->isActive())
@@ -192,6 +195,19 @@ void MoleculesDynamics::setupUI()
 				animationTimer->start();
 			}
 		});
+
+	QPushButton* nextStepButton = new QPushButton("Следующий шаг");
+	nextStepButton->setFixedWidth(200);
+	buttonLayout->addWidget(nextStepButton);
+	connect(nextStepButton, &QPushButton::clicked, this, [this]()
+		{
+			if (!animationTimer->isActive())
+			{
+				animateScatters();
+			}
+		});
+
+	controlsLayout->addLayout(buttonLayout);
 
 	QPushButton* cameraButton = new QPushButton("Сброс камер для графиков");
 	cameraButton->setFixedWidth(400);
