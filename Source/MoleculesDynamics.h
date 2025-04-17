@@ -16,6 +16,13 @@
 
 #include <mathFunc.hpp>
 
+enum class ActionSpinBox 
+{
+	notGeneration,
+	newGeneration,
+	notAction,
+};
+
 struct SpinBoxConfig
 {
 	double min;
@@ -23,6 +30,8 @@ struct SpinBoxConfig
 	double step;
 	double value;
 	QString label;
+	double decimals;
+	ActionSpinBox method;
 };
 
 class MoleculesDynamics : public QMainWindow
@@ -75,16 +84,20 @@ private:
 	QVector<QVector3D> verlet_prev_positions;
 	QVector<double> accumulatedMSE;
 
+	QVector<QVector3D> initialPositions;
+	QVector<QVector3D> initialVelocities;
 
 private:
 	void setupUI();
+	void start(bool generation);
 	void createScatter(int index);
 	void updateScatters();
-	void resetAnimation();
 	void positionCorrection(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double L);
 	double calculateMSE(const QVector<QVector3D>& pos1, const QVector<QVector3D>& pos2);
 
 private slots:
+	void fullRestart();
+	void onlyRestart();
 	void animateScatters();
 	void updateMSELabels();
 	void resetCamera();

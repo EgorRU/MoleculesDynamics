@@ -17,20 +17,20 @@ static inline QVector<QVector3D> computeLJForces(
 
 	for (int i = 0; i < N; ++i)
 	{
-		for (int j = 0; j < N; ++j)
+		for (int j = i + 1; j < N; ++j)
 		{
-			if (i == j) continue;
-
 			QVector3D rij = positions[i] - positions[j];
 			double r = rij.length();
 			double rc = 2.5 * sigma;
-			if (r < 1e-6 || r > rc) continue;
-
+			if (r < 1e-6 || r > rc)
+				continue;
 			double sr = sigma / r;
 			double sr6 = std::pow(sr, 6);
 			double sr12 = sr6 * sr6;
 			double F_over_m = (24.0 * epsilon / weight) * (2.0 * sr12 - sr6) / (r * r);
-			accelerations[i] += F_over_m * rij;
+			QVector3D force = F_over_m * rij;
+			accelerations[i] += force;
+			accelerations[j] -= force;
 		}
 	}
 	return accelerations;
@@ -98,7 +98,7 @@ static inline void verlet(
 
 	for (int i = 0; i < N; ++i)
 	{
-		QVector3D r_new = 2.0 * pos[i] - prev_pos[i] + (forces[i] / weight) * dt * dt;
+		QVector3D r_new = 2.0 * pos[i] - prev_pos[i] + forces[i] * dt * dt;
 		vel[i] = (r_new - prev_pos[i]) / (2.0 * dt);
 		prev_pos[i] = pos[i];
 		pos[i] = r_new;
