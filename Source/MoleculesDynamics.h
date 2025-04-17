@@ -34,7 +34,6 @@ public:
 
 private:
 	int currentStep;
-	const double dt = 0.00001;
 
 	QTimer* animationTimer;
 	QGridLayout* gridLayout;
@@ -47,6 +46,7 @@ private:
 	QDoubleSpinBox* densitySpinBox;
 	QDoubleSpinBox* stepSpinBox;
 	QDoubleSpinBox* speedSpinBox;
+	QDoubleSpinBox* dtSpinBox;
 
 	QComboBox* MSEComboBox;
 
@@ -58,7 +58,7 @@ private:
 	QLabel* predictorCorrectorLabel;
 
 	QMap<QDoubleSpinBox*, SpinBoxConfig> spinBoxConfigs;
-	QLabel** labelsMSE;
+	QVector<QLabel*> labelsMSE;
 
 	QWidget* centralWidget;
 	QWidget* scatterContainers[6];
@@ -87,6 +87,7 @@ private:
 private slots:
 	void animateScatters();
 	void updateMSELabels();
+	void resetCamera();
 };
 
 #endif

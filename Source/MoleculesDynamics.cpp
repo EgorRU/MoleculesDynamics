@@ -24,6 +24,8 @@ MoleculesDynamics::MoleculesDynamics(QWidget* parent)
 	densitySpinBox = new QDoubleSpinBox();
 	stepSpinBox = new QDoubleSpinBox();
 	speedSpinBox = new QDoubleSpinBox();
+	dtSpinBox = new QDoubleSpinBox();
+	dtSpinBox->setDecimals(6);
 
 	MSEComboBox = new QComboBox();
 
@@ -39,21 +41,30 @@ MoleculesDynamics::MoleculesDynamics(QWidget* parent)
 		{stepSpinBox, {100, 100000, 100, 10000, "Шагов моделирования"}},
 		{NSpinBox, {2, 1000, 1, 10, "Количество молекул"}},
 		{densitySpinBox, {0.1, 5, 0.1, 0.8, "Плотность (ρ)"}},
-		{weightSpinBox, {0.1, 1000, 1, 1, "Масса"}},
-		{epsilonSpinBox, {0.1, 1000, 1, 1, "ε"}},
-		{sigmaSpinBox, {0.1, 1000, 1, 1, "σ"}},
+		{weightSpinBox, {0.1, 1000, 0.1, 1, "Масса"}},
+		{epsilonSpinBox, {0.1, 1000, 0.05, 1, "ε"}},
+		{sigmaSpinBox, {0.1, 1000, 0.05, 1, "σ"}},
 		{speedSpinBox, {0.01, 2, 0.01, 0.01, "Δ начальных скоростей"}},
+		{dtSpinBox, {0.000001, 0.01, 0.000001, 0.000001, "dt"}},
 	};
 
-	labelsMSE = new QLabel * [6]
-		{
-			rungeKuttaLabel,
-				verletLabel,
-				velocityVerletLabel,
-				leapfrogLabel,
-				beemanSchofieldLabel,
-				predictorCorrectorLabel,
-		};
+	labelsMSE = QVector<QLabel*>
+	{
+		rungeKuttaLabel,
+		verletLabel,
+		velocityVerletLabel,
+		leapfrogLabel,
+		beemanSchofieldLabel,
+		predictorCorrectorLabel,
+	};
+
+	for (auto label : labelsMSE)
+	{
+		label->setTextInteractionFlags
+		(
+			Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard
+		);
+	}
 
 	setupUI();
 }
@@ -128,10 +139,30 @@ void MoleculesDynamics::setupUI()
 	controlsLayout->addWidget(beemanSchofieldLabel);
 	controlsLayout->addWidget(predictorCorrectorLabel);
 
-	QPushButton* restartButton = new QPushButton("Начать заново");
+	QPushButton* restartButton = new QPushButton("Начать новое моделирование");
 	restartButton->setFixedWidth(180);
 	controlsLayout->addWidget(restartButton);
 	connect(restartButton, &QPushButton::clicked, this, &MoleculesDynamics::resetAnimation);
+
+	QPushButton* pauseButton = new QPushButton("Пауза/Продолжить");
+	pauseButton->setFixedWidth(180);
+	controlsLayout->addWidget(pauseButton);
+	connect(pauseButton, &QPushButton::clicked, this, [this]()
+		{
+			if (animationTimer->isActive())
+			{
+				animationTimer->stop();
+			}
+			else
+			{
+				animationTimer->start();
+			}
+		});
+
+	QPushButton* cameraButton = new QPushButton("Сброс камер для графиков");
+	cameraButton->setFixedWidth(180);
+	controlsLayout->addWidget(cameraButton);
+	connect(cameraButton, &QPushButton::clicked, this, &MoleculesDynamics::resetCamera);
 
 	mainLayout->addWidget(controlsWidget, 0);
 
@@ -192,28 +223,29 @@ void MoleculesDynamics::animateScatters()
 	double epsilon = epsilonSpinBox->value();
 	double sigma = sigmaSpinBox->value();
 	double weight = weightSpinBox->value();
+	double dt = dtSpinBox->value();
 
 	for (int i = 0; i < 6; ++i)
 	{
 		switch (i)
 		{
 		case 0:
-			rungeKutta(method_positions[i], method_velocities[i], epsilon, sigma, weight);
+			rungeKutta(method_positions[i], method_velocities[i], epsilon, sigma, weight, dt);
 			break;
 		case 1:
-			verlet(method_positions[i], method_velocities[i], verlet_prev_positions, epsilon, sigma, weight);
+			verlet(method_positions[i], method_velocities[i], verlet_prev_positions, epsilon, sigma, weight, dt);
 			break;
 		case 2:
-			velocityVerlet(method_positions[i], method_velocities[i], epsilon, sigma, weight);
+			velocityVerlet(method_positions[i], method_velocities[i], epsilon, sigma, weight, dt);
 			break;
 		case 3:
-			leapfrog(method_positions[i], method_velocities[i], epsilon, sigma, weight);
+			leapfrog(method_positions[i], method_velocities[i], epsilon, sigma, weight, dt);
 			break;
 		case 4:
-			beemanSchofield(method_positions[i], method_velocities[i], method_prev_forces[i], epsilon, sigma, weight);
+			beemanSchofield(method_positions[i], method_velocities[i], method_prev_forces[i], epsilon, sigma, weight, dt);
 			break;
 		case 5:
-			predictorCorrector(method_positions[i], method_velocities[i], method_prev_forces[i], epsilon, sigma, weight);
+			predictorCorrector(method_positions[i], method_velocities[i], method_prev_forces[i], epsilon, sigma, weight, dt);
 			break;
 		}
 		double L = pow(NSpinBox->value() / densitySpinBox->value(), 1.0 / 3.0);
@@ -314,15 +346,19 @@ void MoleculesDynamics::resetAnimation()
 		method_prev_forces.push_back(QVector<QVector3D>(N, QVector3D(0, 0, 0)));
 	}
 
-	verlet_prev_positions = method_positions[1];
-	for (int j = 0; j < N; ++j)
-	{
-		verlet_prev_positions[j] -= method_velocities[1][j] * dt;
-	}
-
+	double dt = dtSpinBox->value();
 	double epsilon = epsilonSpinBox->value();
 	double sigma = sigmaSpinBox->value();
 	double weight = weightSpinBox->value();
+
+	QVector<QVector3D> init_forces = computeLJForces(method_positions[1], epsilon, sigma, weight);
+	verlet_prev_positions = method_positions[1];
+	for (int j = 0; j < N; ++j)
+	{
+		QVector3D acceleration = init_forces[j] / weight;
+		verlet_prev_positions[j] -= method_velocities[1][j] * dt;
+		verlet_prev_positions[j] += 0.5 * acceleration * dt * dt;
+	}
 
 	for (int i = 4; i <= 5; ++i)
 	{
@@ -338,13 +374,13 @@ void MoleculesDynamics::positionCorrection(QVector<QVector3D>& pos, QVector<QVec
 {
 	for (int i = 0; i < pos.size(); ++i)
 	{
-		float vx = vel[i].x();
-		float vy = vel[i].y();
-		float vz = vel[i].z();
+		double vx = vel[i].x();
+		double vy = vel[i].y();
+		double vz = vel[i].z();
 
-		float x = reflect(pos[i].x(), L, vx);
-		float y = reflect(pos[i].y(), L, vy);
-		float z = reflect(pos[i].z(), L, vz);
+		double x = reflect(pos[i].x(), L, vx);
+		double y = reflect(pos[i].y(), L, vy);
+		double z = reflect(pos[i].z(), L, vz);
 
 		pos[i].setX(x);
 		pos[i].setY(y);
@@ -375,5 +411,15 @@ void MoleculesDynamics::updateMSELabels()
 		double averageMSE = accumulatedMSE[i] / currentStep;
 		QString mseText = QString("MSE %1: %2").arg(labels[i]).arg(averageMSE, 0, 'f', 6);
 		labelsMSE[i]->setText(mseText);
+	}
+}
+
+void MoleculesDynamics::resetCamera()
+{
+	for (int i = 0; i < 6; ++i)
+	{
+		auto cam = scatters[i]->scene()->activeCamera();
+		cam->setCameraPreset(Q3DCamera::CameraPresetFront);
+		cam->setZoomLevel(120);
 	}
 }

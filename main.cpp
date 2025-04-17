@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     qApp->setPalette(lightPalette);
     qApp->setStyle("Fusion");
 
-    a.setWindowIcon(QIcon("Resource/icon.ico"));
+    a.setWindowIcon(QIcon("icons/icon.ico"));
     MoleculesDynamics w;
     w.showMaximized();
     w.setWindowTitle("Движение молекул");

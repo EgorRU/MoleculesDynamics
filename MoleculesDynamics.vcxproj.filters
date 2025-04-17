@@ -42,11 +42,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Resource\icon.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-  </ItemGroup>
-  <ItemGroup>
     <QtRcc Include="Resource\MoleculesDynamics.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>

@@ -5,9 +5,12 @@
 #include <QVector3D>
 #include <cmath>
 
-static const double dt = 0.00001;
-
-static inline QVector<QVector3D> computeLJForces(const QVector<QVector3D>& positions, double epsilon, double sigma, double weight)
+static inline QVector<QVector3D> computeLJForces(
+	const QVector<QVector3D>& positions,
+	double epsilon,
+	double sigma,
+	double weight
+)
 {
 	int N = positions.size();
 	QVector<QVector3D> accelerations(N, QVector3D(0, 0, 0));
@@ -20,7 +23,8 @@ static inline QVector<QVector3D> computeLJForces(const QVector<QVector3D>& posit
 
 			QVector3D rij = positions[i] - positions[j];
 			double r = rij.length();
-			if (r < 1e-6) continue;
+			double rc = 2.5 * sigma;
+			if (r < 1e-6 || r > rc) continue;
 
 			double sr = sigma / r;
 			double sr6 = std::pow(sr, 6);
@@ -32,7 +36,14 @@ static inline QVector<QVector3D> computeLJForces(const QVector<QVector3D>& posit
 	return accelerations;
 }
 
-static inline void rungeKutta(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double epsilon, double sigma, double weight)
+static inline void rungeKutta(
+	QVector<QVector3D>& pos,
+	QVector<QVector3D>& vel,
+	double epsilon,
+	double sigma,
+	double weight,
+	double dt
+)
 {
 	int N = pos.size();
 	QVector<QVector3D> k1_x(N), k1_v(N), k2_x(N), k2_v(N), k3_x(N), k3_v(N), k4_x(N), k4_v(N);
@@ -72,21 +83,36 @@ static inline void rungeKutta(QVector<QVector3D>& pos, QVector<QVector3D>& vel, 
 	}
 }
 
-static inline void verlet(QVector<QVector3D>& pos, QVector<QVector3D>& vel, QVector<QVector3D>& prev_pos, double epsilon, double sigma, double weight)
+static inline void verlet(
+	QVector<QVector3D>& pos,
+	QVector<QVector3D>& vel,
+	QVector<QVector3D>& prev_pos,
+	double epsilon,
+	double sigma,
+	double weight,
+	double dt
+)
 {
 	int N = pos.size();
 	QVector<QVector3D> forces = computeLJForces(pos, epsilon, sigma, weight);
 
 	for (int i = 0; i < N; ++i)
 	{
-		QVector3D r_new = 2.0 * pos[i] - prev_pos[i] + forces[i] * dt * dt;
+		QVector3D r_new = 2.0 * pos[i] - prev_pos[i] + (forces[i] / weight) * dt * dt;
 		vel[i] = (r_new - prev_pos[i]) / (2.0 * dt);
 		prev_pos[i] = pos[i];
 		pos[i] = r_new;
 	}
 }
 
-static inline void velocityVerlet(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double epsilon, double sigma, double weight)
+static inline void velocityVerlet(
+	QVector<QVector3D>& pos,
+	QVector<QVector3D>& vel,
+	double epsilon,
+	double sigma,
+	double weight,
+	double dt
+)
 {
 	int N = pos.size();
 	QVector<QVector3D> forces = computeLJForces(pos, epsilon, sigma, weight);
@@ -104,7 +130,14 @@ static inline void velocityVerlet(QVector<QVector3D>& pos, QVector<QVector3D>& v
 	}
 }
 
-static inline void leapfrog(QVector<QVector3D>& pos, QVector<QVector3D>& vel, double epsilon, double sigma, double weight)
+static inline void leapfrog(
+	QVector<QVector3D>& pos,
+	QVector<QVector3D>& vel,
+	double epsilon,
+	double sigma,
+	double weight,
+	double dt
+)
 {
 	int N = pos.size();
 	QVector<QVector3D> forces = computeLJForces(pos, epsilon, sigma, weight);
@@ -127,7 +160,15 @@ static inline void leapfrog(QVector<QVector3D>& pos, QVector<QVector3D>& vel, do
 	}
 }
 
-static inline void beemanSchofield(QVector<QVector3D>& pos, QVector<QVector3D>& vel, QVector<QVector3D>& prev_forces, double epsilon, double sigma, double weight)
+static inline void beemanSchofield(
+	QVector<QVector3D>& pos,
+	QVector<QVector3D>& vel,
+	QVector<QVector3D>& prev_forces,
+	double epsilon,
+	double sigma,
+	double weight,
+	double dt
+)
 {
 	int N = pos.size();
 	QVector<QVector3D> forces = computeLJForces(pos, epsilon, sigma, weight);
@@ -147,7 +188,15 @@ static inline void beemanSchofield(QVector<QVector3D>& pos, QVector<QVector3D>& 
 	prev_forces = forces;
 }
 
-static inline void predictorCorrector(QVector<QVector3D>& pos, QVector<QVector3D>& vel, QVector<QVector3D>& prev_forces, double epsilon, double sigma, double weight)
+static inline void predictorCorrector(
+	QVector<QVector3D>& pos,
+	QVector<QVector3D>& vel,
+	QVector<QVector3D>& prev_forces,
+	double epsilon,
+	double sigma,
+	double weight,
+	double dt
+)
 {
 	int N = pos.size();
 	QVector<QVector3D> predicted_pos(N), predicted_vel(N);
@@ -169,13 +218,13 @@ static inline void predictorCorrector(QVector<QVector3D>& pos, QVector<QVector3D
 	prev_forces = predicted_forces;
 }
 
-static inline float reflect(float coord, float L, float& vel)
+static inline double reflect(double coord, double L, double& vel)
 {
-	float size = 2.0f * L;
-	float shifted = coord + L;
+	double size = 2.0f * L;
+	double shifted = coord + L;
 
 	int n = static_cast<int>(shifted / size);
-	float local = shifted - n * size;
+	double local = fmod(shifted, size);
 
 	if (local < 0.0f)
 	{
@@ -183,8 +232,7 @@ static inline float reflect(float coord, float L, float& vel)
 		n -= 1;
 	}
 
-	bool isEven = (n % 2 == 0);
-	if (!isEven)
+	if (n % 2 != 0)
 	{
 		local = size - local;
 		vel = -vel;
