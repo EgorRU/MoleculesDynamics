@@ -39,11 +39,11 @@ MoleculesDynamics::MoleculesDynamics(QWidget* parent)
 	{
 		{stepSpinBox, {100, 100000, 100, 10000, "Шагов моделирования", 0, ActionSpinBox::notAction}},
 		{NSpinBox, {2, 1000, 1, 10, "Количество молекул", 0, ActionSpinBox::newGeneration}},
-		{densitySpinBox, {0.1, 15, 0.1, 5, "Плотность молекул (ρ)", 2, ActionSpinBox::newGeneration}},
+		{densitySpinBox, {0.1, 15, 0.1, 5, "Плотность молекул (ρ)", 2, ActionSpinBox::notGeneration}},
 		{weightSpinBox, {0.1, 1000, 0.1, 0.1, "Масса", 2, ActionSpinBox::notGeneration}},
 		{epsilonSpinBox, {0.1, 100, 0.05, 1, "ε", 2, ActionSpinBox::notGeneration}},
 		{sigmaSpinBox, {0.1, 100, 0.05, 1, "σ", 2, ActionSpinBox::notGeneration}},
-		{speedSpinBox, {0.05, 10, 0.05, 2, "Δ начальных скоростей", 1, ActionSpinBox::newGeneration}},
+		{speedSpinBox, {0.05, 10, 0.05, 2, "Δ начальных скоростей", 1, ActionSpinBox::notAction}},
 		{dtSpinBox, {0.000001, 0.001, 0.000001, 0.000001, "Шаг интегрирования (dt)", 6, ActionSpinBox::notGeneration}},
 	};
 
@@ -266,7 +266,31 @@ void MoleculesDynamics::animateScatters()
 	int totalSteps = stepSpinBox->value();
 	if (currentStep >= totalSteps)
 	{
-		onlyRestart();
+
+		animationTimer->stop();
+
+		QString mseMessage = "Итоговые значения MSE:\n\n";
+		int referenceMethod = MSEComboBox->currentIndex();
+
+		for (int i = 0; i < 6; ++i)
+		{
+			double averageMSE = accumulatedMSE[i] / totalSteps;
+			mseMessage += QString("%1: %2\n").arg(labels[i]).arg(averageMSE, 0, 'f', 10);
+		}
+
+		QMessageBox msgBox;
+		msgBox.setWindowTitle("Моделирование завершено");
+		msgBox.setText("Моделирование достигло максимального количества шагов");
+		msgBox.setInformativeText(mseMessage);
+		msgBox.setStandardButtons(QMessageBox::Ok);
+
+		if (QLabel* label = msgBox.findChild<QLabel*>()) 
+		{
+			label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+			label->setCursor(Qt::IBeamCursor);
+		}
+
+		msgBox.exec();
 		return;
 	}
 
@@ -385,12 +409,12 @@ void MoleculesDynamics::start(bool generation)
 			positions[i] = QVector3D(x, y, z);
 		}
 
+		static std::mt19937 gen(std::random_device{}());
+		static std::normal_distribution<double> dist(0.0, speed / 3.0);
+
 		for (int i = 0; i < N; ++i)
 		{
-			double vx = -speed + QRandomGenerator::global()->generateDouble() * speed * 2;
-			double vy = -speed + QRandomGenerator::global()->generateDouble() * speed * 2;
-			double vz = -speed + QRandomGenerator::global()->generateDouble() * speed * 2;
-			velocities[i] = QVector3D(vx, vy, vz);
+			velocities[i] = QVector3D(dist(gen), dist(gen), dist(gen));
 		}
 
 		QVector3D totalMomentum(0, 0, 0);

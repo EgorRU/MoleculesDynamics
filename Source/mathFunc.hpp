@@ -40,6 +40,13 @@ static inline QVector<QVector3D> computeLJForces(
 	return accelerations;
 }
 
+// Метод Рунге–Кутта 4-го порядка (RK4):
+// y_{n+1} = y_n + (dt / 6) * (k1 + 2k2 + 2k3 + k4)
+// где:
+// k1 = f(t_n, y_n)
+// k2 = f(t_n + dt/2, y_n + dt/2 * k1)
+// k3 = f(t_n + dt/2, y_n + dt/2 * k2)
+// k4 = f(t_n + dt, y_n + dt * k3)
 static inline void rungeKutta(
 	QVector<QVector3D>& pos,
 	QVector<QVector3D>& vel,
@@ -87,6 +94,9 @@ static inline void rungeKutta(
 	}
 }
 
+// Метод Верле (Verlet):
+// x_{n+1} = 2x_n - x_{n-1} + a_n * dt^2
+// v_n = (x_{n+1} - x_{n-1}) / (2 * dt)
 static inline void verlet(
 	QVector<QVector3D>& pos,
 	QVector<QVector3D>& vel,
@@ -109,6 +119,10 @@ static inline void verlet(
 	}
 }
 
+// Метод скоростной Верле (Velocity Verlet):
+// x_{n+1} = x_n + v_n * dt + (1/2) * a_n * dt^2
+// a_{n+1} = f(x_{n+1})
+// v_{n+1} = v_n + (1/2) * (a_n + a_{n+1}) * dt
 static inline void velocityVerlet(
 	QVector<QVector3D>& pos,
 	QVector<QVector3D>& vel,
@@ -134,6 +148,10 @@ static inline void velocityVerlet(
 	}
 }
 
+// Метод с перескоками (Leapfrog):
+// v_{n+1/2} = v_n + (1/2) * a_n * dt
+// x_{n+1} = x_n + v_{n+1/2} * dt
+// v_{n+1} = v_{n+1/2} + (1/2) * a_{n+1} * dt
 static inline void leapfrog(
 	QVector<QVector3D>& pos,
 	QVector<QVector3D>& vel,
@@ -164,6 +182,9 @@ static inline void leapfrog(
 	}
 }
 
+// Метод Бимана-Шофилда (Beeman-Schofield):
+// x_{n+1} = x_n + v_n * dt + (1/6) * (4a_n - a_{n-1}) * dt^2
+// v_{n+1} = v_n + (1/6) * (2a_{n+1} + 5a_n - a_{n-1}) * dt
 static inline void beemanSchofield(
 	QVector<QVector3D>& pos,
 	QVector<QVector3D>& vel,
@@ -192,6 +213,11 @@ static inline void beemanSchofield(
 	prev_forces = forces;
 }
 
+// Метод предиктор-корректор:
+// Предиктор: x_{n+1}^p = x_n + v_n * dt + 0.5 * a_n * dt^2
+//             v_{n+1}^p = v_n + a_n * dt
+// Корректор: x_{n+1} = x_n + v_n * dt + 0.5 * a_{n+1}^p * dt^2
+//            v_{n+1} = v_n + 0.5 * (a_n + a_{n+1}^p) * dt
 static inline void predictorCorrector(
 	QVector<QVector3D>& pos,
 	QVector<QVector3D>& vel,

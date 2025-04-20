@@ -1,6 +1,8 @@
 #ifndef MOLECULESDYNAMICS_H
 #define MOLECULESDYNAMICS_H
 
+#include <random>
+
 #include <QMainWindow>
 #include <QGridLayout>
 #include <Q3DScatter>
@@ -13,6 +15,7 @@
 #include <QMenuBar>
 #include <QComboBox>
 #include <QPushButton>
+#include <QMessageBox>
 
 #include <mathFunc.hpp>
 
