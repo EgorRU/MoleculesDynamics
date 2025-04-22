@@ -43,7 +43,7 @@ MoleculesDynamics::MoleculesDynamics(QWidget* parent)
 		{weightSpinBox, {0.1, 1000, 0.1, 0.1, "Масса", 2, ActionSpinBox::notGeneration}},
 		{epsilonSpinBox, {0.1, 100, 0.05, 1, "ε", 2, ActionSpinBox::notGeneration}},
 		{sigmaSpinBox, {0.1, 100, 0.05, 1, "σ", 2, ActionSpinBox::notGeneration}},
-		{speedSpinBox, {0.05, 10, 0.05, 2, "Δ начальных скоростей", 1, ActionSpinBox::notAction}},
+		{speedSpinBox, {0.1, 30, 0.1, 6, "Дисперсия нач. скоростей", 1, ActionSpinBox::notAction}},
 		{dtSpinBox, {0.000001, 0.001, 0.000001, 0.000001, "Шаг интегрирования (dt)", 6, ActionSpinBox::notGeneration}},
 	};
 
@@ -409,8 +409,8 @@ void MoleculesDynamics::start(bool generation)
 			positions[i] = QVector3D(x, y, z);
 		}
 
-		static std::mt19937 gen(std::random_device{}());
-		static std::normal_distribution<double> dist(0.0, speed / 3.0);
+		std::mt19937 gen(std::random_device{}());
+		std::normal_distribution<double> dist(0.0, speed);
 
 		for (int i = 0; i < N; ++i)
 		{

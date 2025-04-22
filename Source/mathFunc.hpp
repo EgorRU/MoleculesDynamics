@@ -21,8 +21,7 @@ static inline QVector<QVector3D> computeLJForces(
 		{
 			QVector3D rij = positions[i] - positions[j];
 			double r = rij.length();
-			double rc = 2.5 * sigma;
-			if (r < 1e-6 || r > rc)
+			if (r < 1e-6)
 			{
 				continue;
 			}
